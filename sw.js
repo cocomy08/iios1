@@ -2,28 +2,18 @@
 const CACHE_NAME = 'qiqi-phone-cache-v3.0025';
 
 // 需要缓存的核心文件列表
-// 需要缓存的核心文件列表
-// 需要缓存的核心文件列表
 const urlsToCache = [
   './',
   './index.html',
   './manifest.json',
-  './app.bundle.js',
-  './pop.mp3',
-  './style.min.css',
-  './settings-ios-style.min.css',
-  './voice-bubble-fix.min.css',
-  './voice-touch-fix.min.css',
-  './ios_modal_theme.min.css',
-  './meetu-ios-style.min.css',
-  './shopping-ios-style.min.css',
-  './src/styles/shop-ceramic.min.css',
-  './src/styles/music-player.min.css',
-  './anecdotes.min.css',
-  './location-card.min.css',
-  './chat-settings-page.min.css',
-  './src/styles/littleworld.min.css',
-  './src/styles/api-switcher.min.css'
+  './main.js',
+  './style.css',
+  './voice-bubble-fix.css',
+  './chat-settings-page.css',
+  './GLOBAL_MENU_FIX.js',
+  './settings-ios-style.css',
+  './src/styles/littleworld.css',
+  './src/scripts/littleworld.js'
 ];
 
 // 1. 安装 Service Worker
