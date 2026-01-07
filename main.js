@@ -731,54 +731,72 @@ document.addEventListener('DOMContentLoaded', () => {
         const confirmBtn = document.getElementById('ios-calibration-confirm-btn');
         const CALIBRATION_KEY = 'ios_pwa_calibrated_v2';
 
-        // 核心：纯 JS 防回弹锁 (不修改 CSS overflow，防止破坏布局)
+        // 核心：纯 JS 防回弹锁 (优化版：减少 touchmove 时的重排)
         function enableRubberBandShield() {
-            debugLog('🛡️ 启用触摸锁定护盾 (Enhanced V2)');
+            debugLog('🛡️ 启用触摸锁定护盾 (Performance Optimized V3)');
 
-            document.addEventListener('touchmove', function (e) {
-                // 1. 查找所有可能的滚动容器
-                // ⚠️ 关键修复：加入 .overflow-y-auto, .overflow-auto 等通用类名，防止误伤 Flex 布局的滚动区
-                // 新增: .ceramic-category-scroll (水平), .ceramic-content-scroll, .settings-page-content
+            let activeScrollParent = null;
+            let isScrollableX = false;
+            let isScrollableY = false;
+            let initialY = 0;
+            let initialX = 0;
+
+            // 1. 在 touchstart 时预先计算滚动状态 (只执行一次重排)
+            document.addEventListener('touchstart', function (e) {
+                initialY = e.touches[0].clientY;
+                initialX = e.touches[0].clientX;
+                window.lastTouchY = initialY;
+                window.lastTouchX = initialX;
+
                 const target = e.target;
-                const scrollableParent = target.closest('.chat-messages-container, .settings-content, .settings-content-ios, .music-content, .content, .scrollable, .settings-page .overflow-y-auto, .overflow-y-auto, .overflow-auto, .ceramic-category-scroll, .ceramic-content-scroll, .settings-page-content');
+                // 查找最近的滚动容器
+                activeScrollParent = target.closest('.chat-messages-container, .settings-content, .settings-content-ios, .music-content, .content, .scrollable, .settings-page .overflow-y-auto, .overflow-y-auto, .overflow-auto, .ceramic-category-scroll, .ceramic-content-scroll, .settings-page-content');
 
-                // 2. 如果不在白名单容器内 -> 也就是在背景/Body上 -> 坚决阻止
-                if (!scrollableParent) {
+                if (activeScrollParent) {
+                    // ⚠️ 强制产生一次重排 (Reflow)，但仅在开始触摸时发生一次
+                    isScrollableY = activeScrollParent.scrollHeight > activeScrollParent.clientHeight;
+                    isScrollableX = activeScrollParent.scrollWidth > activeScrollParent.clientWidth;
+                } else {
+                    activeScrollParent = null;
+                    isScrollableY = false;
+                    isScrollableX = false;
+                }
+            }, { passive: false });
+
+            // 2. 在 touchmove 时只进行逻辑判断 (无重排)
+            document.addEventListener('touchmove', function (e) {
+                // 如果没有找到滚动容器 -> 阻止 (背景区域)
+                if (!activeScrollParent) {
                     if (e.cancelable) e.preventDefault();
                     return;
                 }
 
-                // 3. 滚动能力检测 (X/Y)
-                const isScrollableY = scrollableParent.scrollHeight > scrollableParent.clientHeight;
-                const isScrollableX = scrollableParent.scrollWidth > scrollableParent.clientWidth;
-
+                // 内容不够长，滑不动 -> 阻止
                 if (!isScrollableY && !isScrollableX) {
-                    // 内容不够长，滑不动，直接阻止以防漏给 body
                     if (e.cancelable) e.preventDefault();
                     return;
                 }
 
                 const currentY = e.touches[0].clientY;
                 const currentX = e.touches[0].clientX;
-                // 防止 undefined 导致跳跃
+                // 防止 undefined 导致跳跃 (通常 touchstart 会初始化，这里兜底)
                 const lastY = (window.lastTouchY === undefined) ? currentY : window.lastTouchY;
                 const lastX = (window.lastTouchX === undefined) ? currentX : window.lastTouchX;
 
-                // 4. 判定手势方向
+                // 判定手势方向
                 const deltaY = currentY - lastY;
                 const deltaX = currentX - lastX;
                 const isVerticalGesture = Math.abs(deltaY) > Math.abs(deltaX);
 
-                // 5. 水平滚动逻辑处理
+                // 水平滚动逻辑处理
                 if (isScrollableX && !isVerticalGesture) {
-                    // 如果是水平滚动区域，且手势也是水平的 -> 允许 (不阻止)
-                    // 更新坐标并返回
+                    // 如果是水平滚动区域，且手势也是水平的 -> 允许
                     window.lastTouchY = currentY;
                     window.lastTouchX = currentX;
                     return;
                 }
 
-                // 6. 如果是垂直手势，但只有水平滚动能力 -> 阻止 (防止拉动页面)
+                // 如果是垂直手势，但只有水平滚动能力 -> 阻止 (防止拉动页面)
                 if (isScrollableX && !isScrollableY && isVerticalGesture) {
                     if (e.cancelable) e.preventDefault();
                     window.lastTouchY = currentY;
@@ -786,30 +804,30 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                // 7. 垂直滚动边界检查 (防止橡皮筋)
-                if (isScrollableY) {
-                    const isAtTop = scrollableParent.scrollTop <= 0;
-                    const isAtBottom = scrollableParent.scrollTop + scrollableParent.clientHeight >= scrollableParent.scrollHeight - 1;
+                // 垂直滚动边界检查 (防止橡皮筋)
+                if (isScrollableY && isVerticalGesture) {
+                    const scrollTop = activeScrollParent.scrollTop;
+                    const scrollHeight = activeScrollParent.scrollHeight;
+                    const clientHeight = activeScrollParent.clientHeight;
 
-                    if (isVerticalGesture) {
-                        if (isAtTop && deltaY > 0) {
-                            // 到顶了还往下拉 -> 阻止
-                            if (e.cancelable) e.preventDefault();
-                        } else if (isAtBottom && deltaY < 0) {
-                            // 到底了还往上拉 -> 阻止
-                            if (e.cancelable) e.preventDefault();
-                        }
+                    // 注意：scrollTop 读取通常不会触发重排，只要布局未失效。
+                    // 但为了极致安全，我们只在边界时才可能面临浏览器内部计算。
+                    // 通常浏览器对 scrollTop 的读取有优化。
+
+                    const isAtTop = scrollTop <= 0;
+                    const isAtBottom = scrollTop + clientHeight >= scrollHeight - 1;
+
+                    if (isAtTop && deltaY > 0) {
+                        // 到顶了还往下拉 -> 阻止
+                        if (e.cancelable) e.preventDefault();
+                    } else if (isAtBottom && deltaY < 0) {
+                        // 到底了还往上拉 -> 阻止
+                        if (e.cancelable) e.preventDefault();
                     }
                 }
 
                 window.lastTouchY = currentY;
                 window.lastTouchX = currentX;
-            }, { passive: false });
-
-            // 记录触摸起点
-            document.addEventListener('touchstart', function (e) {
-                window.lastTouchY = e.touches[0].clientY;
-                window.lastTouchX = e.touches[0].clientX;
             }, { passive: false });
         }
 
