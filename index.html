@@ -302,9 +302,14 @@
   <link rel="stylesheet" href="src/styles/music-player.css" />
   <link rel="stylesheet" href="anecdotes.css" />
 
-  <!-- Tailwind CSS for Settings Page -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- 🔥 iOS 内存优化：移除 Tailwind CDN (节省 3-5MB 内存) -->
+  <!-- Tailwind CDN 会生成 ~13000+ CSS 规则，严重消耗 iOS 内存 -->
+  <!-- 已替换为轻量级纯 CSS 文件 -->
+  <link rel="stylesheet" href="settings-no-tailwind.css" />
+  
+  <!-- 🔥 iOS 内存优化：移除 Lucide CDN (节省 ~1-2MB 内存) -->
+  <!-- Lucide 图标已内联为 SVG，详见设置页面 HTML -->
+  <!-- <script src="https://unpkg.com/lucide@latest"></script> -->
 
   <!-- Settings Page Styles -->
   <style>
@@ -548,6 +553,8 @@
   <script defer src="src/scripts/virtual-list.js"></script>
   <script defer src="src/scripts/api-switcher.js"></script>
   <script defer src="src/scripts/ios-render-fix.js"></script> 
+  <script defer src="src/scripts/lucide-icons-inline.js"></script>
+  <script defer src="src/scripts/ios-memory-critical.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
   

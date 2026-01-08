@@ -1148,6 +1148,40 @@ document.addEventListener('DOMContentLoaded', () => {
             debugLog(`[计时器系统] ✅ 已清理所有计时器 (共${totalCount}个)`);
             this.timers.clear();
         },
+
+        /**
+         * 清理单个 interval (兼容旧代码调用)
+         * @param {number} timerId - 计时器 ID
+         */
+        clearInterval(timerId) {
+            if (timerId) {
+                clearInterval(timerId);
+                // 尝试从所有标签中移除
+                this.timers.forEach((timerIds, tag) => {
+                    const index = timerIds.indexOf(timerId);
+                    if (index > -1) {
+                        timerIds.splice(index, 1);
+                    }
+                });
+            }
+        },
+
+        /**
+         * 清理单个 timeout (兼容旧代码调用)
+         * @param {number} timerId - 计时器 ID
+         */
+        clearTimeout(timerId) {
+            if (timerId) {
+                clearTimeout(timerId);
+                // 尝试从所有标签中移除
+                this.timers.forEach((timerIds, tag) => {
+                    const index = timerIds.indexOf(timerId);
+                    if (index > -1) {
+                        timerIds.splice(index, 1);
+                    }
+                });
+            }
+        },
     };
 
     // ========================================================================
