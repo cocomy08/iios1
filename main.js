@@ -11051,64 +11051,168 @@ How are you today?[Split]你今天好吗？\\\\
 
     /**
      * 导出 Store 并分离图片（含去重逻辑）
+     * 【iOS 优化版】：先读取所有数据，再批量处理图片
+     * 避免在 IndexedDB 游标中使用 await 导致事务超时
      */
     function exportStoreWithImages(storeName, imagesFolder, counterObj, imgDedupeMap) {
         return new Promise((resolve, reject) => {
             const request = indexedDB.open(dbHelper.dbName, dbHelper.dbVersion);
 
-            request.onsuccess = (event) => {
+            request.onsuccess = async (event) => {
                 const db = event.target.result;
+
+                // 检查 store 是否存在
+                if (!db.objectStoreNames.contains(storeName)) {
+                    console.log(`⏭️ Store "${storeName}" 不存在，跳过`);
+                    resolve(new Blob(['[]'], { type: 'application/json' }));
+                    return;
+                }
+
                 const transaction = db.transaction([storeName], 'readonly');
                 const store = transaction.objectStore(storeName);
+
+                // 🚀 第一步：同步读取所有数据（不使用 await）
+                const allRecords = [];
                 const cursorRequest = store.openCursor();
 
-                const chunks = [];
-                chunks.push('[');
-                let isFirst = true;
-
-                cursorRequest.onsuccess = async (e) => {
+                cursorRequest.onsuccess = (e) => {
                     const cursor = e.target.result;
                     if (cursor) {
-                        if (!isFirst) chunks.push(',');
-                        else isFirst = false;
-
-                        let record = cursor.value;
-
                         try {
-                            record = JSON.parse(JSON.stringify(record));
-
-                            // 【关键修改】：传入全局的 imgDedupeMap
-                            await extractAndSaveImages(record, imagesFolder, counterObj, imgDedupeMap);
-
-                            // 🔍 调试：检查替换是否生效
-                            const recordStr = JSON.stringify(record);
-                            if (recordStr.includes('backup://images/')) {
-                                console.log(`✨ 记录已处理，包含占位符`);
-                            } else if (recordStr.includes('data:image/')) {
-                                console.error(`❌ 警告：记录中仍包含base64图片！`);
-                            }
-
-                            chunks.push(recordStr);
-
-                            // 在 iOS 上主动让步，降低内存/事件循环压力
-                            if (IS_IOS) await new Promise(r => setTimeout(r, 0));
-
+                            // 深拷贝记录
+                            allRecords.push(JSON.parse(JSON.stringify(cursor.value)));
                         } catch (err) {
-                            console.warn("处理记录失败", err);
+                            console.warn(`忽略无法序列化的记录`, err);
                         }
-
                         cursor.continue();
                     } else {
-                        chunks.push(']');
-                        const blob = new Blob(chunks, { type: 'application/json' });
-                        chunks.length = 0;
-                        resolve(blob);
+                        // 🚀 第二步：游标完成后，异步处理所有图片
+                        processRecordsAsync(allRecords, imagesFolder, counterObj, imgDedupeMap, storeName)
+                            .then(blob => resolve(blob))
+                            .catch(err => reject(err));
                     }
                 };
+
                 cursorRequest.onerror = (e) => reject(e.target.error);
             };
+
             request.onerror = (e) => reject(e.target.error);
         });
+    }
+
+    /**
+     * 【iOS 优化】异步批量处理记录中的图片
+     * 将图片处理从游标循环中分离出来，避免事务超时
+     */
+    async function processRecordsAsync(records, imagesFolder, counterObj, imgDedupeMap, storeName) {
+        const chunks = ['['];
+        let isFirst = true;
+        let processedCount = 0;
+        const totalCount = records.length;
+        const batchSize = IS_IOS ? 5 : 20; // iOS 上使用更小的批次
+
+        console.log(`📦 开始处理 ${storeName}，共 ${totalCount} 条记录`);
+
+        for (let i = 0; i < records.length; i++) {
+            if (!isFirst) chunks.push(',');
+            else isFirst = false;
+
+            const record = records[i];
+
+            try {
+                // 【使用同步哈希】提取并保存图片
+                extractAndSaveImagesSync(record, imagesFolder, counterObj, imgDedupeMap);
+                chunks.push(JSON.stringify(record));
+            } catch (err) {
+                console.warn(`处理记录失败:`, err);
+                chunks.push(JSON.stringify(record));
+            }
+
+            processedCount++;
+
+            // iOS 上每处理几条就让步一次，防止阻塞UI
+            if (IS_IOS && processedCount % batchSize === 0) {
+                await new Promise(r => setTimeout(r, 0));
+                // 更新状态文字（如果存在）
+                const statusText = document.getElementById('backup-status-text');
+                if (statusText) {
+                    statusText.textContent = `处理 ${storeName}: ${processedCount}/${totalCount}`;
+                }
+            }
+        }
+
+        chunks.push(']');
+        const blob = new Blob(chunks, { type: 'application/json' });
+        chunks.length = 0; // 释放内存
+
+        console.log(`✅ ${storeName} 处理完成，共 ${processedCount} 条`);
+        return blob;
+    }
+
+    /**
+     * 【同步版本】递归提取对象中的 Base64 图片
+     * 使用快速的 djb2 哈希代替耗时的 SHA-256
+     */
+    function extractAndSaveImagesSync(obj, imagesFolder, counterObj, imgDedupeMap) {
+        if (!obj || typeof obj !== 'object') return;
+
+        for (const key in obj) {
+            const value = obj[key];
+
+            // === 情况 A: 纯 Base64 字符串 ===
+            if (typeof value === 'string' && value.startsWith('data:image/')) {
+                const headerMatch = value.match(/^data:image\/(\w+);base64,/);
+                if (!headerMatch) continue;
+
+                const ext = headerMatch[1];
+                let base64Data = value.substring(headerMatch[0].length);
+                base64Data = base64Data.replace(/\s/g, '');
+
+                // 🚀 使用快速同步哈希（比 SHA-256 快 100x）
+                const hash = simpleHash32(base64Data);
+                const existingFileName = imgDedupeMap.get(hash);
+
+                if (existingFileName) {
+                    obj[key] = `backup://images/${existingFileName}`;
+                } else {
+                    counterObj.count++;
+                    const fileName = `img_${counterObj.count}.${ext}`;
+                    imagesFolder.file(fileName, base64Data, { base64: true });
+                    imgDedupeMap.set(hash, fileName);
+                    obj[key] = `backup://images/${fileName}`;
+                }
+            }
+            // === 情况 B: CSS url() 格式 ===
+            else if (typeof value === 'string' && value.trim().startsWith('url(') && value.includes('data:image/')) {
+                const urlMatch = value.match(/^url\(["']?(data:image\/[^"']+)["']?\)$/);
+                if (urlMatch) {
+                    const base64 = urlMatch[1];
+                    const headerMatch = base64.match(/^data:image\/(\w+);base64,/);
+                    if (!headerMatch) continue;
+
+                    const ext = headerMatch[1];
+                    let base64Data = base64.substring(headerMatch[0].length);
+                    base64Data = base64Data.replace(/\s/g, '');
+
+                    const hash = simpleHash32(base64Data);
+                    const existingFileName = imgDedupeMap.get(hash);
+
+                    if (existingFileName) {
+                        obj[key] = `url("backup://images/${existingFileName}")`;
+                    } else {
+                        counterObj.count++;
+                        const fileName = `img_${counterObj.count}.${ext}`;
+                        imagesFolder.file(fileName, base64Data, { base64: true });
+                        imgDedupeMap.set(hash, fileName);
+                        obj[key] = `url("backup://images/${fileName}")`;
+                    }
+                }
+            }
+            // === 情况 C: 递归处理嵌套对象 ===
+            else if (typeof value === 'object' && value !== null) {
+                extractAndSaveImagesSync(value, imagesFolder, counterObj, imgDedupeMap);
+            }
+        }
     }
 
     /**
