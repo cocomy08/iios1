@@ -181,31 +181,61 @@
     };
 
     // MutationObserver：监听动态添加的图标
+    // 🚀 优化：添加节流机制，避免频繁扫描导致的内存抖动
+    let pendingRefresh = false;
+    let refreshTimeout = null;
+
     const observer = new MutationObserver(mutations => {
+        // 快速检查：是否有可能包含新图标的节点
         let hasNewIcons = false;
-        mutations.forEach(mutation => {
-            mutation.addedNodes.forEach(node => {
+        for (const mutation of mutations) {
+            for (const node of mutation.addedNodes) {
                 if (node.nodeType === 1) {
-                    if (node.matches && node.matches('i[data-lucide]')) {
+                    // 只检查 tagName，避免调用 matches() 和 querySelectorAll()
+                    if (node.tagName === 'I' && node.hasAttribute('data-lucide')) {
                         hasNewIcons = true;
-                    } else if (node.querySelectorAll) {
-                        if (node.querySelectorAll('i[data-lucide]').length > 0) {
-                            hasNewIcons = true;
-                        }
+                        break;
+                    }
+                    // 对于容器节点，只做简单的 innerHTML 检查
+                    if (node.innerHTML && node.innerHTML.includes('data-lucide')) {
+                        hasNewIcons = true;
+                        break;
                     }
                 }
-            });
-        });
-        if (hasNewIcons) {
-            replaceLucideIcons();
+            }
+            if (hasNewIcons) break;
+        }
+
+        if (hasNewIcons && !pendingRefresh) {
+            pendingRefresh = true;
+            // 使用 requestIdleCallback 或 setTimeout 节流
+            if ('requestIdleCallback' in window) {
+                requestIdleCallback(() => {
+                    replaceLucideIcons();
+                    pendingRefresh = false;
+                }, { timeout: 500 });
+            } else {
+                clearTimeout(refreshTimeout);
+                refreshTimeout = setTimeout(() => {
+                    replaceLucideIcons();
+                    pendingRefresh = false;
+                }, 200);
+            }
         }
     });
 
-    // 开始观察
-    observer.observe(document.body || document.documentElement, {
-        childList: true,
-        subtree: true
-    });
+    // 开始观察 - 仅在非 iOS 设备上启用，iOS 设备完全禁用以节省内存
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-    console.log('[Lucide Inline] 🚀 轻量级图标系统已加载 (替代 Lucide CDN)');
+    if (!isIOS) {
+        observer.observe(document.body || document.documentElement, {
+            childList: true,
+            subtree: true
+        });
+        console.log('[Lucide Inline] 🚀 轻量级图标系统已加载 (MutationObserver 已优化)');
+    } else {
+        console.log('[Lucide Inline] 🚀 轻量级图标系统已加载 (iOS: MutationObserver 已禁用以节省内存)');
+    }
 })();
+

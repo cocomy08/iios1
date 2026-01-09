@@ -63,46 +63,10 @@
     window.StringCache = StringCache;
 
     // ========================================================================
-    // 2. 周期性强制清理 innerHTML 残留
+    // 2. 周期性强制清理已移除 (2026-01-09)
+    // 原因：每30秒执行 querySelectorAll 会导致内存抖动和性能问题
+    // 保留紧急清理和可见性切换清理功能
     // ========================================================================
-    let cleanupInterval = null;
-
-    function startPeriodicCleanup() {
-        if (cleanupInterval) return;
-
-        cleanupInterval = setInterval(() => {
-            // 清理隐藏元素的 innerHTML
-            const hiddenContainers = document.querySelectorAll(
-                '.screen:not(.active) .chat-messages-container,' +
-                '.modal-overlay[style*="display: none"] .modal-body,' +
-                '[style*="display: none"] .content-container'
-            );
-
-            let cleanedCount = 0;
-            hiddenContainers.forEach(container => {
-                if (container.children.length > 0) {
-                    // 先断开子节点引用
-                    while (container.firstChild) {
-                        container.removeChild(container.firstChild);
-                    }
-                    cleanedCount++;
-                }
-            });
-
-            if (cleanedCount > 0) {
-                console.log(`[iOS Memory] 清理了 ${cleanedCount} 个隐藏容器`);
-            }
-
-            // 检查内存使用情况
-            if (performance.memory) {
-                const usedMB = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
-                if (usedMB > 100) {
-                    console.warn(`[iOS Memory] ⚠️ 内存使用: ${usedMB}MB，触发额外清理`);
-                    triggerEmergencyCleanup();
-                }
-            }
-        }, 30000); // 每30秒检查一次
-    }
 
     // ========================================================================
     // 3. 紧急内存清理
@@ -224,7 +188,7 @@
     // ========================================================================
     // 7. 启动
     // ========================================================================
-    startPeriodicCleanup();
+    // startPeriodicCleanup(); // 已移除 - 导致内存抖动
 
     // 暴露 API
     window.iOSMemoryCritical = {

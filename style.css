@@ -43,7 +43,10 @@
   /* 新增：禁止双击缩放手势，提升点击响应速度 */
   touch-action: manipulation;
 }
-
+* { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+/* 🚀 性能优化：禁用 will-change 以减少 GPU 层创建 (2026-01-09) */
+/* 根本原因：will-change 会告诉浏览器提前创建 GPU 层，12000+ 节点时导致 Layerise 占用 52-58% 时间 */
+* { will-change: auto !important; }
 /* === 性能优化：硬件加速和磨砂效果优化 === */
 /* 1. 为所有 modal-overlay 添加硬件加速，避免磨砂效果延迟 */
 /* 1. 为所有 modal-overlay 添加硬件加速 - 移除过度优化以防止 iOS 崩溃 */
@@ -58,7 +61,10 @@
 }
 
 * {
-  font-family: inherit;
+  /* 使用系统原生 UI 字体栈，绕过用户主题商城的自定义字体 */
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", 
+               Roboto, "Helvetica Neue", Arial, "Noto Sans", "PingFang SC", 
+               "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
 }
 
 /* ============================================================ */
@@ -247,7 +253,19 @@ body.is-ios-pwa .content {
   height: 100%;
 }
 
-/* 确保所有滚动容器在 iOS 上都有原生惯性滚动体验 - 强力修复版 */
+/* ============================================================ */
+/* === iOS 滚动修复 (Universal iOS Scroll Fix) ===               */
+/* ============================================================ */
+/* 
+ * iOS Safari/WebKit 需要以下属性才能正常滚动：
+ * 1. -webkit-overflow-scrolling: touch  - 启用惯性滚动
+ * 2. min-height: 0                       - Flex 子项必须设置，否则无法滚动
+ * 3. overflow-y: auto                    - 显式设置溢出行为
+ * 4. touch-action: pan-y                 - 允许垂直方向手势
+ * 5. overscroll-behavior: contain        - 防止滚动链冒泡
+ */
+
+/* 基础滚动容器修复 */
 .overflow-y-auto, 
 .overflow-auto,
 .overflow-scroll,
@@ -258,13 +276,128 @@ body.is-ios-pwa .content {
 .ceramic-content-scroll,
 [class*="overflow-y-auto"] {
   -webkit-overflow-scrolling: touch !important;
-  /* 使用 contain 防止滚动链冒泡到 body 触发橡皮筋或卡顿 */
   overscroll-behavior: contain !important; 
   overscroll-behavior-y: contain !important;
-  /* 明确允许垂直方向的手势操作 */
   touch-action: pan-y !important;
-  /* 确保 z-index 不会挡住触摸事件 */
   position: relative;
+}
+
+/* ===== iOS 全面滚动修复 - 覆盖所有可能的滚动容器 ===== */
+/* 模态框和弹窗内容 */
+.modal-content,
+.modal-body,
+.modal-scroll,
+.popup-content,
+.dialog-content,
+.sheet-content,
+.drawer-content,
+.panel-content,
+/* 列表容器 */
+.list-container,
+.contact-list,
+.message-list,
+.chat-list,
+.song-list,
+.playlist-container,
+.memory-list,
+.worldbook-list,
+/* 聊天相关 */
+.chat-messages-container,
+.chat-content,
+.messages-container,
+/* 设置页面 */
+.settings-content,
+.settings-content-ios,
+.settings-scroll,
+.settings-body,
+/* 小窝/晤面等特殊页面 */
+.wowo-content,
+.meetu-content,
+.meetu-page-content,
+.littleworld-content,
+.boomboom-content,
+/* 通用滚动类 */
+[data-scrollable],
+[data-scroll],
+.scrollable,
+.scroll-container,
+.scroll-area,
+.scroll-content,
+.scroll-wrapper,
+/* Flex 布局中的滚动区域 */
+.flex-1,
+.flex-grow,
+[class*="flex-1"],
+/* 其他常见容器 */
+.content-area,
+.main-content,
+.body-content,
+.page-content,
+.view-content,
+.container-scroll {
+  /* iOS 惯性滚动 - 关键属性 */
+  -webkit-overflow-scrolling: touch !important;
+  
+  /* 防止 Flex 子项高度塌陷导致无法滚动 - 最关键的修复 */
+  min-height: 0 !important;
+  
+  /* 防止滚动链冒泡到 body */
+  overscroll-behavior: contain;
+  overscroll-behavior-y: contain;
+  
+  /* 允许垂直滚动手势 */
+  touch-action: pan-y;
+}
+
+/* Flex 容器内的滚动区域特殊处理 */
+.flex-1.overflow-y-auto,
+.flex-1[class*="overflow-y-auto"],
+.flex-grow.overflow-y-auto,
+[style*="flex: 1"][style*="overflow"] {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: auto !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* 确保模态框/弹窗内的滚动区域能正常工作 */
+.modal-overlay .scrollable,
+.modal-overlay [class*="scroll"],
+.modal-overlay [class*="overflow"],
+.modal-content .scrollable,
+.modal-content [class*="scroll"],
+.modal-content [class*="overflow"] {
+  -webkit-overflow-scrolling: touch !important;
+  min-height: 0 !important;
+  touch-action: pan-y !important;
+}
+
+/* iOS PWA 专用滚动修复 */
+body.is-ios-pwa .chat-messages-container,
+body.is-ios-pwa .settings-content,
+body.is-ios-pwa .settings-content-ios,
+body.is-ios-pwa .music-content,
+body.is-ios-pwa .content,
+body.is-ios-pwa .screen,
+body.is-ios-pwa .modal-body,
+body.is-ios-pwa .modal-content,
+body.is-ios-pwa .list-container,
+body.is-ios-pwa [class*="scroll"],
+body.is-ios-pwa [class*="overflow"] {
+  -webkit-overflow-scrolling: touch !important;
+  min-height: 0 !important;
+  touch-action: pan-y !important;
+  overscroll-behavior-y: contain !important;
+}
+
+/* 修复：确保有 overflow 属性的元素都能滚动 */
+[style*="overflow-y: auto"],
+[style*="overflow-y: scroll"],
+[style*="overflow: auto"],
+[style*="overflow: scroll"] {
+  -webkit-overflow-scrolling: touch !important;
+  min-height: 0 !important;
 }
 
 /* 修复 Settings Page 的布局定位 */
@@ -295,7 +428,7 @@ body.is-ios-pwa .content {
   opacity: 1;
   pointer-events: auto;
   z-index: 2;
-  background-image: url("https://i.postimg.cc/QtJScxby/0d38a84056017cca080bd184a4045e74.png");
+  background-image: white;
   /* 初始状态 */
   transform: scale(1);
   filter: brightness(1);
@@ -3157,17 +3290,29 @@ body.fullscreen-mode .phone-frame {
 /* 3. 表情显示的网格容器 (修正版) */
 #emoji-grid-container {
   display: grid;
-  /* 稍微加大单元格最小宽度，让排列更疏朗 */
   grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
   gap: 12px;
   row-gap: 2px;
   padding: 5px 10px;
   box-sizing: border-box;
+  
+  /* 滚动相关关键设置 */
   flex-grow: 1;
+  min-height: 0;                /* 解决 Flex 嵌套下的高度计算问题 */
   overflow-y: auto;
-
-  /* 隐藏默认背景色，让毛玻璃透出来 */
+  -webkit-overflow-scrolling: touch; 
+  
+  /* 确保在某些容器下可见 */
+  height: 100%;                 
   background-color: transparent !important;
+}
+
+.memory-prompt-input {
+  /* 滚动相关关键设置 */
+  flex-grow: 1;
+  min-height: 0;                /* 解决 Flex 嵌套下的高度计算问题 */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch; 
 }
 
 /* 4. 单个表情图片的样式 */
@@ -11150,7 +11295,7 @@ body.fullscreen-mode .phone-frame {
   /* 【关键】禁止按钮被压缩 */
 }
 
-/* --- 4. 消息气泡内的引用样式 --- */
+/* --- 4. 消息气泡内的引用样式 (Reply Quote) --- */
 .reply-quote-container {
   background-color: rgba(0, 0, 0, 0.05);
   /* 淡淡的背景 */
@@ -11163,6 +11308,10 @@ body.fullscreen-mode .phone-frame {
   font-size: 10px;
   cursor: pointer;
   /* 可点击跳转 */
+  
+  /* 【关键修复】限制引用框的最大宽度，防止撑破气泡 */
+  max-width: 240px; 
+  box-sizing: border-box;
 }
 
 /* 在深色模式下的适配 */
@@ -11182,6 +11331,25 @@ body.fullscreen-mode .phone-frame {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* --- 5. Markdown 引用样式 (Blockquote) - 修复长文本溢出 --- */
+blockquote {
+  margin: 4px 0;
+  padding-left: 10px;
+  border-left: 3px solid rgba(0, 0, 0, 0.2);
+  opacity: 0.8;
+  font-size: 0.95em;
+  /* 核心：允许长文本换行 */
+  white-space: pre-wrap; 
+  word-break: break-all;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+/* 深色模式下的 Blockquote */
+.phone-frame.dark-mode blockquote {
+    border-left-color: rgba(255, 255, 255, 0.3);
 }
 
 /* --- 聊天记录卡片专属样式 (修复交互版) --- */
@@ -17843,7 +18011,8 @@ body.fullscreen-mode div[id$="-screen"] {
   top: 0;
   left: 0;
   width: 100%;
-  height: 100%;
+  height: 100dvh;
+  max-height: 100vh;
   z-index: 10000;
   display: flex;
   justify-content: center;
@@ -17874,8 +18043,9 @@ body.fullscreen-mode div[id$="-screen"] {
   position: relative;
   width: 90%;
   max-width: 450px;
-  height: 80vh;
+  height: 80dvh;
   max-height: 700px;
+  min-height: 0;
   /* Soft Corkboard Texture */
   background-color: #f7f1e3;
   background-image: radial-gradient(#dccbb5 1px, transparent 1px),
@@ -17939,10 +18109,14 @@ body.fullscreen-mode div[id$="-screen"] {
 .peeping-content-area {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 20px;
   position: relative;
   /* Hide scrollbar but allow scroll */
   scrollbar-width: none;
+  min-height: 0; /* 关键：强制让 flex 子项可以缩小，从而触发 overflow */
+  -webkit-overflow-scrolling: touch; /* 确保 iOS 滑动流畅 */
+  will-change: scroll-position;
 }
 .peeping-content-area::-webkit-scrollbar {
   display: none;
@@ -18274,6 +18448,7 @@ body.fullscreen-mode div[id$="-screen"] {
 .meetu-content {
   flex: 1;
   overflow-y: auto;
+  min-height: 0;
   margin: 90px 16px 10px 16px; /* Top margin increased */
   padding: 24px;
   background: rgba(255, 255, 255, 0.85);
@@ -19102,5 +19277,31 @@ body.ios-optimize-mode .scroll-container { -webkit-overflow-scrolling: touch; tr
     user-select: none;
     -webkit-user-select: none;
 }
-
-
+.anecdotes-input,
+.letter-paper,
+.collection-binder,
+.bb-view-home,
+.bb-view-home .bb-view-home-content,
+.bb-retina-container,
+.bb-retina-item,
+.bb-heartbeat-list,
+.transactions-page-content,
+.transactions-page-content .transactions-page-content-wrapper,
+.memory-cheques-container,
+.memory-cheques-container .memory-cheques-content,
+.orders-list-container,
+.orders-list-container .orders-list-content,
+.cart-items-container,
+.cart-items-container .cart-items-content,
+.lw-view-moments,
+.lw-view-subtext {
+  min-height: 0;
+  overflow-y: auto;           /* 启用垂直滚动 */
+  overflow-x: hidden;         /* 防止水平滚动 */
+  -webkit-overflow-scrolling: touch; /* iOS 惯性滚动 */
+  overscroll-behavior-y: contain;    /* 防止滚动链冒泡 */
+}
+.lw-view-subtext .lw-view-subtext-content {
+  min-height: 0;
+  -webkit-overflow-scrolling: touch; /* 确保 iOS 滑动流畅 */
+}

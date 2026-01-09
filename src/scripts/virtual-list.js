@@ -132,4 +132,5 @@
     }
 
     window.VirtualListManager = new VirtualListManager();
+    console.log('[VirtualList] ✅ Library loaded and Manager initialized');
 })();

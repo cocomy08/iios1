@@ -1163,8 +1163,6 @@ const MusicPlayer = (function () {
             let lyricContext = '暂无歌词';
             if (state.lyrics && state.lyrics.length > 0) {
                 lyricContext = state.lyrics.map(l => l.text).filter(t => t).join('\n');
-                // 简单截断以防过长
-                if (lyricContext.length > 3000) lyricContext = lyricContext.slice(0, 3000) + '...';
             }
 
             // 获取完整人设信息
@@ -1187,7 +1185,7 @@ const MusicPlayer = (function () {
                         }
                     }
                     if (worldBookEntries.length > 0) {
-                        worldBookContent = worldBookEntries.join('\n\n').slice(0, 1000);
+                        worldBookContent = worldBookEntries.join('\n\n');
                     }
                 } catch (e) {
                     console.warn('[MusicPlayer] 读取世界书失败:', e);
@@ -1200,9 +1198,9 @@ const MusicPlayer = (function () {
                 const chatHistory = currentContact.history.slice(-10);
                 recentChatHistory = chatHistory.map(msg => {
                     if (msg.sender === 'ai') {
-                        return `${aiName}: ${msg.text?.slice(0, 100) || ''}`;
+                        return `${aiName}: ${msg.text || ''}`;
                     } else if (msg.sender === 'user') {
-                        return `${userName}: ${msg.text?.slice(0, 100) || ''}`;
+                        return `${userName}: ${msg.text || ''}`;
                     }
                     return '';
                 }).filter(Boolean).join('\n');
@@ -1216,12 +1214,12 @@ const MusicPlayer = (function () {
 
 【AI 角色设定】
 姓名：${aiName}
-${aiPersona ? `人设：\n${aiPersona.slice(0, 500)}` : ''}
+${aiPersona ? `人设：\n${aiPersona}` : ''}
 ${worldBookContent ? `\n【世界设定】\n${worldBookContent}` : ''}
 
 【用户设定】
 姓名：${userName}
-${userPersona ? `人设：\n${userPersona.slice(0, 300)}` : ''}
+${userPersona ? `人设：\n${userPersona}` : ''}
 
 ${recentChatHistory ? `【之前的聊天记录】\n${recentChatHistory}\n` : ''}
 【一起听模式规则】
@@ -1868,7 +1866,7 @@ ${recentMessages}
                         }
                     }
                     if (worldBookEntries.length > 0) {
-                        worldBookContent = worldBookEntries.join('\n\n').slice(0, 800);
+                        worldBookContent = worldBookEntries.join('\n\n');
                     }
                 } catch (e) {
                     console.warn('[MusicPlayer] 读取世界书失败:', e);
@@ -1878,7 +1876,7 @@ ${recentMessages}
             // 获取歌词
             let lyricContext = '';
             if (state.lyrics && state.lyrics.length > 0) {
-                lyricContext = state.lyrics.map(l => l.text).filter(t => t).slice(0, 20).join('\n');
+                lyricContext = state.lyrics.map(l => l.text).filter(t => t).join('\n');
             }
 
             // 读取之前的主聊天历史（最近5条）
@@ -1887,9 +1885,9 @@ ${recentMessages}
                 const chatHistory = currentContact.history.slice(-5);
                 recentChatHistory = chatHistory.map(msg => {
                     if (msg.sender === 'ai') {
-                        return `${aiName}: ${msg.text?.slice(0, 50) || ''}`;
+                        return `${aiName}: ${msg.text || ''}`;
                     } else if (msg.sender === 'user') {
-                        return `${userName}: ${msg.text?.slice(0, 50) || ''}`;
+                        return `${userName}: ${msg.text || ''}`;
                     }
                     return '';
                 }).filter(Boolean).join('\n');
@@ -1908,7 +1906,7 @@ ${recentMessages}
 
             // 构建播放列表信息
             const playlistInfo = state.playlist.length > 0 ?
-                `播放列表(${state.playlist.length}首): ${state.playlist.slice(0, 5).map(t => t.name).join(', ')}${state.playlist.length > 5 ? '...' : ''}` :
+                `播放列表(${state.playlist.length}首): ${state.playlist.map(t => t.name).join(', ')}` :
                 '播放列表为空';
 
             // 构建完整 System Prompt
@@ -1919,12 +1917,12 @@ ${recentMessages}
 
 【AI 角色设定】
 姓名：${aiName}
-${aiPersona ? `人设：\n${aiPersona.slice(0, 400)}` : ''}
+${aiPersona ? `人设：\n${aiPersona}` : ''}
 ${worldBookContent ? `\n【世界设定】\n${worldBookContent}` : ''}
 
 【用户设定】
 姓名：${userName}
-${userPersona ? `人设：\n${userPersona.slice(0, 200)}` : ''}
+${userPersona ? `人设：\n${userPersona}` : ''}
 
 ${recentChatHistory ? `【之前的聊天记录】\n${recentChatHistory}\n` : ''}
 

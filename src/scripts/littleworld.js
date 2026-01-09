@@ -151,17 +151,28 @@
         renderSubtexts(contact);
     }
 
+    let _lastMomentsCount = 0; // 缓存上次的moments数量，用于优化
+
     function renderMoments(contact) {
         const container = document.getElementById('lw-moments-list');
         if (!container) return;
-
-        container.innerHTML = '';
 
         // 空值保护
         if (!littleWorldData) {
             container.innerHTML = '<div class="lw-empty-state"><h3>加载中...</h3></div>';
             return;
         }
+
+        const momentsCount = littleWorldData.moments?.length || 0;
+
+        // === 优化：如果moments数量没变，且容器有内容，则跳过重新渲染 ===
+        if (momentsCount === _lastMomentsCount && container.children.length > 0 && momentsCount > 0) {
+            console.log('[LittleWorld] Moments未变化，跳过重新渲染');
+            return;
+        }
+        _lastMomentsCount = momentsCount;
+
+        container.innerHTML = '';
 
         if (!littleWorldData.moments || littleWorldData.moments.length === 0) {
             const remaining = CONFIG.MOMENTS_THRESHOLD - ((littleWorldData.incrementCount || 0) % CONFIG.MOMENTS_THRESHOLD);
@@ -780,11 +791,28 @@
     }
 
     // ========== 消息计数器 ==========
+    let _saveBatchTimer = null;
+    let _pendingSave = false;
+
     function incrementMessageCount() {
         if (!littleWorldData) return;
         littleWorldData.incrementCount++;
-        saveLittleWorldData(currentContactId, littleWorldData);
-        console.log('[LittleWorld] 消息计数+1, 当前:', littleWorldData.incrementCount);
+        
+        // 批量保存：不立即调用 saveLittleWorldData，而是标记为待保存
+        // 在 messageSent 防抖触发时再批量保存
+        _pendingSave = true;
+        console.log('[LittleWorld] 消息计数+1 (待保存), 当前:', littleWorldData.incrementCount);
+    }
+
+    async function flushLittleWorldData() {
+        if (!_pendingSave || !littleWorldData) return;
+        try {
+            await saveLittleWorldData(currentContactId, littleWorldData);
+            _pendingSave = false;
+            console.log('[LittleWorld] 数据已批量保存');
+        } catch (e) {
+            console.warn('[LittleWorld] 批量保存失败:', e);
+        }
     }
 
     // ========== 页面切换 ==========
@@ -830,9 +858,49 @@
 
     // ========== 初始化事件绑定 ==========
     function bindEvents() {
-        // 入口按钮
+        // 防抖：避免 messageSent 高频触发导致内存抖动
+        let littleWorldDebounceTimer = null;
+        const debouncedUpdateCount = async (contact) => {
+            if (littleWorldDebounceTimer) clearTimeout(littleWorldDebounceTimer);
+            littleWorldDebounceTimer = setTimeout(async () => {
+                if (!window.LittleWorld || !littleWorldData) return;
+                try {
+                    window.LittleWorld.incrementCount();
+                    
+                    // 批量保存待保存数据
+                    await flushLittleWorldData();
+                    
+                    // 使用 requestIdleCallback 避免阻塞主线程
+                    if (typeof requestIdleCallback !== 'undefined') {
+                        requestIdleCallback(async () => {
+                            await window.LittleWorld.checkTrigger(contact);
+                            console.log('[LittleWorld] 触发检查已完成（异步）');
+                        }, { timeout: 2000 });
+                    } else {
+                        // 降级：延迟异步执行
+                        setTimeout(async () => {
+                            await window.LittleWorld.checkTrigger(contact);
+                            console.log('[LittleWorld] 触发检查已完成（异步）');
+                        }, 100);
+                    }
+                } catch (e) {
+                    console.warn('[LittleWorld] 防抖更新失败:', e);
+                }
+                littleWorldDebounceTimer = null;
+            }, 500); // 500ms 防抖时间
+        };
+
+        // messageSent 事件监听（已防抖）
+        document.addEventListener('messageSent', async (e) => {
+            const contact = e.detail?.contact || window.currentOpenContact;
+            if (contact) {
+                await debouncedUpdateCount(contact);
+            }
+        });
+
+        // 入口按钮 - 只匹配小世界的入口按钮ID
         document.addEventListener('click', (e) => {
-            if (e.target.closest('.bigworld-entry-btn')) {
+            if (e.target.closest('#bigworld-entry-btn')) {
                 openLittleWorld();
             }
         });
