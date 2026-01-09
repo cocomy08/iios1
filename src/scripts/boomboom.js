@@ -5,7 +5,7 @@
  * ============================================
  */
 
-(function() {
+(function () {
     'use strict';
 
     // ============ 常量定义 ============
@@ -15,6 +15,7 @@
     // ============ 缓存数据 ============
     let cachedPhoneData = null;
     let isLoading = false;
+    const BOOMBOOM_CACHE_STORE = 'boomboomCache'; // IndexedDB store name
 
     // ============ XML 标签定义 ============
     const XML_TAGS = {
@@ -100,7 +101,7 @@
 
             const worldbookData = await window.dbHelper.loadData('worldBooks', 'allWorldBooks');
             const allBooks = (worldbookData && Array.isArray(worldbookData.value)) ? worldbookData.value : [];
-            
+
             if (contact.linkedWorldBookIds && contact.linkedWorldBookIds.length > 0) {
                 const linkedBooks = allBooks.filter(b => contact.linkedWorldBookIds.includes(b.id));
                 return linkedBooks.map(b => b.content).join('\n\n');
@@ -118,7 +119,7 @@
     function getPersonaInfo() {
         const contact = window.currentOpenContact;
         if (!contact) return { ai: {}, user: {} };
-        
+
         return {
             ai: {
                 name: contact.ai?.name || 'AI',
@@ -143,7 +144,7 @@
         const persona = getPersonaInfo();
         const worldBook = await getWorldBookContent();
         const chatHistory = getChatHistory(50);
-        
+
         // 格式化聊天记录
         const formattedHistory = chatHistory.map(msg => {
             if (msg.sender === 'ai') {
@@ -241,7 +242,7 @@ ${formattedHistory || '暂无'}
      */
     async function fetchPhoneContent() {
         if (isLoading) return null;
-        
+
         isLoading = true;
         toggleLoading(true);
 
@@ -286,6 +287,9 @@ ${formattedHistory || '暂无'}
             const phoneData = parseXMLContent(content);
             cachedPhoneData = phoneData;
 
+            // 持久化存储到 IndexedDB
+            await saveCachedPhoneData(phoneData);
+
             // 触发彩蛋检测
             checkEasterEgg(phoneData);
 
@@ -314,7 +318,7 @@ ${formattedHistory || '暂无'}
             const match = content.match(regex);
             if (match && match[1]) {
                 let value = match[1].trim();
-                
+
                 // 尝试解析JSON
                 if (value.startsWith('[') || value.startsWith('{')) {
                     try {
@@ -324,7 +328,7 @@ ${formattedHistory || '暂无'}
                         console.warn(`[Boomboom] JSON解析失败 for ${tag}:`, e);
                     }
                 }
-                
+
                 result[key] = value;
             }
         }
@@ -341,7 +345,7 @@ ${formattedHistory || '暂无'}
         // [BugFix] 使用当前联系人ID作为Key的一部分，防止跨角色污染 (A的彩蛋在B那里触发)
         const contactId = getCurrentContactId();
         if (!contactId) return;
-        
+
         const storageKey = `${BOOMBOOM_EASTER_KEY}_${contactId}`;
 
         // 检查是否已有待处理的彩蛋
@@ -379,7 +383,7 @@ ${formattedHistory || '暂无'}
 
         // 存入 localStorage (带ID)
         const injectionText = `[系统提示：${persona.user.name}刚刚偷偷查看了你的手机！手机上显示的内容包括：\n${phoneContentSummary}\n请在接下来的回复中，根据你的性格自然地做出反应——可以是尴尬、害羞、生气、或者故作镇定。这是一次性的提示，仅在下次回复时生效。]`;
-        
+
         localStorage.setItem(storageKey, injectionText);
         console.log('[Boomboom] 彩蛋内容已存储:', injectionText);
     }
@@ -394,7 +398,7 @@ ${formattedHistory || '暂无'}
         if (!container || !data) return;
 
         if (typeof data === 'string') {
-            container.innerHTML = data.split('\n').map(line => 
+            container.innerHTML = data.split('\n').map(line =>
                 line.trim() ? `${line}<br>` : ''
             ).join('');
         } else {
@@ -448,10 +452,10 @@ ${formattedHistory || '暂无'}
         }
 
         container.innerHTML = data.map(receipt => {
-            const tagHtml = receipt.tag && receipt.tag !== '无' 
-                ? `<div class="bb-receipt-tag">${receipt.tag}</div>` 
+            const tagHtml = receipt.tag && receipt.tag !== '无'
+                ? `<div class="bb-receipt-tag">${receipt.tag}</div>`
                 : '';
-            
+
             const itemsHtml = (receipt.items || []).map(item => `
                 <div class="bb-receipt-row">
                     <span>ITEM: ${item.name}</span>
@@ -513,9 +517,9 @@ ${formattedHistory || '暂无'}
                 <div style="display:flex; justify-content:space-between;">
                     <span style="font-size:15px; font-weight:bold;">${search.query || ''}</span>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${search.locked ? '#8e44ad' : '#555'}" stroke-width="2">
-                        ${search.locked 
-                            ? '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'
-                            : '<line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>'}
+                        ${search.locked
+                ? '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'
+                : '<line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>'}
                     </svg>
                 </div>
                 <div style="font-size:12px; color:${search.locked ? '#8e44ad' : '#666'}; margin-top:6px;">
@@ -638,7 +642,7 @@ ${formattedHistory || '暂无'}
         const containerEl = document.getElementById('bb-chat-container');
 
         if (titleEl) titleEl.textContent = chatData.name || 'Chat';
-        
+
         if (containerEl && chatData.messages) {
             containerEl.innerHTML = chatData.messages.map(msg => `
                 <div class="bb-bubble ${msg.side}">${msg.text || ''}</div>
@@ -656,7 +660,43 @@ ${formattedHistory || '暂无'}
         console.log('[Boomboom] Toast:', text);
     }
 
-    // ============ 主界面控制 ============
+
+
+    // ============ 持久化存储 ============
+
+    /**
+     * 从 IndexedDB 加载缓存的手机数据
+     */
+    async function loadCachedPhoneData() {
+        const contactId = getCurrentContactId();
+        if (!contactId || !window.dbHelper) return null;
+
+        try {
+            const data = await window.dbHelper.loadData(BOOMBOOM_CACHE_STORE, contactId);
+            if (data && data.value) {
+                console.log('[Boomboom] 加载缓存数据成功');
+                return data.value;
+            }
+        } catch (e) {
+            console.error('[Boomboom] 加载缓存数据失败:', e);
+        }
+        return null;
+    }
+
+    /**
+     * 保存手机数据到 IndexedDB
+     */
+    async function saveCachedPhoneData(phoneData) {
+        const contactId = getCurrentContactId();
+        if (!contactId || !window.dbHelper || !phoneData) return;
+
+        try {
+            await window.dbHelper.saveData(BOOMBOOM_CACHE_STORE, contactId, phoneData);
+            console.log('[Boomboom] 数据已缓存');
+        } catch (e) {
+            console.error('[Boomboom] 保存缓存数据失败:', e);
+        }
+    }
 
     /**
      * 打开Boomboom界面
@@ -666,14 +706,40 @@ ${formattedHistory || '暂无'}
         if (!screen) return;
 
         screen.classList.add('active');
-        
+
         // 重置到首页
         switchView('home', 'Dashboard', document.querySelector('.bb-nav-icon'));
 
-        // 获取并渲染数据
+        // 优先加载缓存数据
+        const cachedData = await loadCachedPhoneData();
+        if (cachedData) {
+            cachedPhoneData = cachedData;
+            renderAllContent(cachedData);
+            console.log('[Boomboom] 使用缓存数据渲染');
+        } else {
+            // 首次进入，无缓存，需要生成
+            console.log('[Boomboom] 无缓存数据，开始生成...');
+            const data = await fetchPhoneContent();
+            if (data) {
+                renderAllContent(data);
+            }
+        }
+    }
+
+    /**
+     * 重新生成手机内容（用户主动触发）
+     */
+    async function regeneratePhoneContent() {
+        if (isLoading) {
+            showError('正在生成中，请稍候...');
+            return;
+        }
+
+        console.log('[Boomboom] 用户触发重新生成');
         const data = await fetchPhoneContent();
         if (data) {
             renderAllContent(data);
+            showError('手机内容已更新！'); // 这里复用 showError 显示成功消息
         }
     }
 
@@ -701,7 +767,7 @@ ${formattedHistory || '暂无'}
 
         // 导航按钮
         document.querySelectorAll('.bb-nav-icon').forEach(nav => {
-            nav.addEventListener('click', function() {
+            nav.addEventListener('click', function () {
                 const view = this.dataset.view;
                 const title = this.dataset.title;
                 if (view && title) {
@@ -718,7 +784,7 @@ ${formattedHistory || '暂无'}
 
         // Overlay关闭按钮
         document.querySelectorAll('.bb-overlay-close').forEach(btn => {
-            btn.addEventListener('click', function(e) {
+            btn.addEventListener('click', function (e) {
                 e.stopPropagation(); // 阻止事件冒泡
                 e.preventDefault();
                 const overlay = this.closest('.bb-overlay');
@@ -728,7 +794,7 @@ ${formattedHistory || '暂无'}
 
         // Tab过滤
         document.querySelectorAll('.bb-tab-item').forEach(tab => {
-            tab.addEventListener('click', function() {
+            tab.addEventListener('click', function () {
                 const type = this.dataset.type;
                 if (type) filterReceipts(type, this);
             });
@@ -738,7 +804,7 @@ ${formattedHistory || '暂无'}
     // ============ 暴露全局接口 ============
     window.openBoomboomScreen = openBoomboomScreen;
     window.closeBoomboomScreen = closeBoomboomScreen;
-    
+
     window.Boomboom = {
         open: openBoomboomScreen,
         close: closeBoomboomScreen,
@@ -748,10 +814,10 @@ ${formattedHistory || '暂无'}
         closeOverlay: closeOverlay,
         openChat: openChat,
         showToast: showToast,
-        refresh: async function() {
-            const data = await fetchPhoneContent();
-            if (data) renderAllContent(data);
-        }
+        // 重新生成（用户主动触发）
+        regenerate: regeneratePhoneContent,
+        // 保留 refresh 作为兼容（现在等同于 regenerate）
+        refresh: regeneratePhoneContent
     };
 
     // ============ DOM Ready 初始化 ============

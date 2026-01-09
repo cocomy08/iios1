@@ -1,5 +1,5 @@
 // 缓存的名称和版本 - 修改此处版本号即可自动更新所有用户
-const CACHE_NAME = 'qiqi-phone-cache-v3.0032';
+const CACHE_NAME = 'qiqi-phone-cache-v3.00352';
 
 // 需要缓存的核心文件列表
 const urlsToCache = [

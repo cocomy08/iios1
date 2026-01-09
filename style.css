@@ -61,10 +61,11 @@
 }
 
 * {
-  /* 使用系统原生 UI 字体栈，绕过用户主题商城的自定义字体 */
+  /* 使用系统原生 UI 字体栈 */
+  /* Remove !important to allow user custom fonts to override */
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", 
                Roboto, "Helvetica Neue", Arial, "Noto Sans", "PingFang SC", 
-               "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
+               "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 }
 
 /* ============================================================ */
@@ -286,6 +287,7 @@ body.is-ios-pwa .content {
 /* 模态框和弹窗内容 */
 .modal-content,
 .modal-body,
+.peeping-content-area,
 .modal-scroll,
 .popup-content,
 .dialog-content,
@@ -328,12 +330,21 @@ body.is-ios-pwa .content {
 .flex-1,
 .flex-grow,
 [class*="flex-1"],
+/* User Requested Universal Fix Targets (2026-01-09) */
+.bb-view-home, .bb-view-wallet, .bb-viewport,
+.wowo-page-journal, .wowo-page-whisper,
+.lw-view-moments, .lw-view-subtext,
+.slacking-off-main-content,
+.cart-screen, .orders-screen,
+.bb-retina-scroll, .bb-hide-scroll,
 /* 其他常见容器 */
 .content-area,
 .main-content,
 .body-content,
 .page-content,
 .view-content,
+.wow-detail-comments,
+.wow-content-area,
 .container-scroll {
   /* iOS 惯性滚动 - 关键属性 */
   -webkit-overflow-scrolling: touch !important;
@@ -345,8 +356,8 @@ body.is-ios-pwa .content {
   overscroll-behavior: contain;
   overscroll-behavior-y: contain;
   
-  /* 允许垂直滚动手势 */
-  touch-action: pan-y;
+  /* 允许双向滚动手势 (修复横向滚动列表 bb-retina-scroll 卡死问题) */
+  touch-action: pan-x pan-y !important;
 }
 
 /* Flex 容器内的滚动区域特殊处理 */
@@ -373,7 +384,8 @@ body.is-ios-pwa .content {
   touch-action: pan-y !important;
 }
 
-/* iOS PWA 专用滚动修复 */
+/* iOS PWA 专用滚动修复 - 扩展版覆盖所有滚动容器 */
+/* 原始 PWA 列表 + 通用修复列表的并集 */
 body.is-ios-pwa .chat-messages-container,
 body.is-ios-pwa .settings-content,
 body.is-ios-pwa .settings-content-ios,
@@ -384,7 +396,61 @@ body.is-ios-pwa .modal-body,
 body.is-ios-pwa .modal-content,
 body.is-ios-pwa .list-container,
 body.is-ios-pwa [class*="scroll"],
-body.is-ios-pwa [class*="overflow"] {
+body.is-ios-pwa [class*="overflow"],
+/* 来自通用修复列表的补充 (L286-L361) */
+body.is-ios-pwa .peeping-content-area,
+body.is-ios-pwa .modal-scroll,
+body.is-ios-pwa .popup-content,
+body.is-ios-pwa .dialog-content,
+body.is-ios-pwa .sheet-content,
+body.is-ios-pwa .drawer-content,
+body.is-ios-pwa .panel-content,
+body.is-ios-pwa .contact-list,
+body.is-ios-pwa .message-list,
+body.is-ios-pwa .chat-list,
+body.is-ios-pwa .song-list,
+body.is-ios-pwa .playlist-container,
+body.is-ios-pwa .memory-list,
+body.is-ios-pwa .worldbook-list,
+body.is-ios-pwa .chat-content,
+body.is-ios-pwa .messages-container,
+body.is-ios-pwa .settings-scroll,
+body.is-ios-pwa .settings-body,
+body.is-ios-pwa .wowo-content,
+body.is-ios-pwa .meetu-content,
+body.is-ios-pwa .meetu-page-content,
+body.is-ios-pwa .littleworld-content,
+body.is-ios-pwa .boomboom-content,
+body.is-ios-pwa [data-scrollable],
+body.is-ios-pwa [data-scroll],
+body.is-ios-pwa .scrollable,
+body.is-ios-pwa .scroll-container,
+body.is-ios-pwa .scroll-area,
+body.is-ios-pwa .scroll-content,
+body.is-ios-pwa .scroll-wrapper,
+body.is-ios-pwa .flex-1,
+body.is-ios-pwa .flex-grow,
+body.is-ios-pwa [class*="flex-1"],
+body.is-ios-pwa .bb-view-home, 
+body.is-ios-pwa .bb-view-wallet, 
+body.is-ios-pwa .bb-viewport,
+body.is-ios-pwa .wowo-page-journal, 
+body.is-ios-pwa .wowo-page-whisper,
+body.is-ios-pwa .lw-view-moments, 
+body.is-ios-pwa .lw-view-subtext,
+body.is-ios-pwa .slacking-off-main-content,
+body.is-ios-pwa .cart-screen, 
+body.is-ios-pwa .orders-screen,
+body.is-ios-pwa .bb-retina-scroll, 
+body.is-ios-pwa .bb-hide-scroll,
+body.is-ios-pwa .content-area,
+body.is-ios-pwa .main-content,
+body.is-ios-pwa .body-content,
+body.is-ios-pwa .page-content,
+body.is-ios-pwa .view-content,
+body.is-ios-pwa .wow-detail-comments,
+body.is-ios-pwa .wow-content-area,
+body.is-ios-pwa .container-scroll {
   -webkit-overflow-scrolling: touch !important;
   min-height: 0 !important;
   touch-action: pan-y !important;
@@ -18231,7 +18297,6 @@ body.fullscreen-mode div[id$="-screen"] {
   padding: 15px;
   box-shadow: 2px 4px 8px rgba(0, 0, 0, 0.15); /* Lifted shadow */
   animation: slideUp 0.4s ease forwards;
-  opacity: 0;
   transform: translateY(20px);
   border: none;
   width: 65%; /* Narrower cards */
@@ -19276,32 +19341,4 @@ body.ios-optimize-mode .scroll-container { -webkit-overflow-scrolling: touch; tr
     /* 确保不被选中 */
     user-select: none;
     -webkit-user-select: none;
-}
-.anecdotes-input,
-.letter-paper,
-.collection-binder,
-.bb-view-home,
-.bb-view-home .bb-view-home-content,
-.bb-retina-container,
-.bb-retina-item,
-.bb-heartbeat-list,
-.transactions-page-content,
-.transactions-page-content .transactions-page-content-wrapper,
-.memory-cheques-container,
-.memory-cheques-container .memory-cheques-content,
-.orders-list-container,
-.orders-list-container .orders-list-content,
-.cart-items-container,
-.cart-items-container .cart-items-content,
-.lw-view-moments,
-.lw-view-subtext {
-  min-height: 0;
-  overflow-y: auto;           /* 启用垂直滚动 */
-  overflow-x: hidden;         /* 防止水平滚动 */
-  -webkit-overflow-scrolling: touch; /* iOS 惯性滚动 */
-  overscroll-behavior-y: contain;    /* 防止滚动链冒泡 */
-}
-.lw-view-subtext .lw-view-subtext-content {
-  min-height: 0;
-  -webkit-overflow-scrolling: touch; /* 确保 iOS 滑动流畅 */
 }

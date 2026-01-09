@@ -56,6 +56,8 @@
     margin: 0 auto;
     min-height: 0;
 
+}
+
 /* 隐藏滚动条 */
 .bb-hide-scroll::-webkit-scrollbar { display: none; }
 .bb-hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
@@ -98,6 +100,7 @@
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
     min-height: 0;
+}
 
 /* --- 4. 卡片风格 --- */
 .bb-void-card {
@@ -497,12 +500,14 @@
 /* --- 14. View Animation --- */
 .bb-view-section {
     display: none;
-    opacity: 0;
-    animation: bbFadeSlide 0.5s forwards;
+    /* opacity: 0; Removed to prevent visibility sticking */
+    /* animation: bbFadeSlide 0.5s forwards; Removed to isolate display issue */
 }
 
 .bb-view-section.active {
-    display: block;
+    display: block !important; /* Force display */
+    opacity: 1 !important;
+    animation: none !important;
 }
 
 @keyframes bbFadeSlide {

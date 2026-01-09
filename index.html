@@ -112,7 +112,7 @@
     <!-- 版本检测和更新提示系统 -->
     <script>
       (function () {
-        const CURRENT_VERSION = "3.0032"; // 当前版本号
+        const CURRENT_VERSION = "3.00352"; // 当前版本号
         const VERSION_KEY = "app_version";
         const LAST_CHECK_KEY = "last_version_check";
 
@@ -611,6 +611,12 @@
 
     <!-- ✅ 关键 JS (同步加载) -->
     <script src="main.min.js"></script>
+
+
+
+    <!-- 🎭 Boomboom Screen Logic & Styles -->
+    <link rel="stylesheet" href="src/styles/boomboom.css" />
+    <script src="src/scripts/boomboom.js"></script>
 
     <!-- ⏳ 非关键 JS 将通过 loadjs 延迟加载 -->
     <!-- littleworld.js, GLOBAL_MENU_FIX.js, api-switcher.js, jszip.min.js -->
@@ -2479,7 +2485,7 @@
                     <p class="text-[15px] font-medium text-gray-900">
                       Version 3.0
                     </p>
-                    <p class="text-[13px] text-gray-400 mt-1">Build 3.0032</p>
+                    <p class="text-[13px] text-gray-400 mt-1">Build 3.00352</p>
                   </div>
                   <button
                     id="about-device-btn"
