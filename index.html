@@ -4525,7 +4525,15 @@
             </button>
           </div>
 
-          <div id="emoji-panel">
+          <div 
+            id="emoji-panel" 
+            style="
+              display: flex !important;
+              flex-direction: column !important;
+              height: var(--emoji-panel-height, 350px) !important;
+              overflow: hidden !important;
+            "
+          >
             <div class="emoji-panel-header">
               <button id="add-emoji-btn" class="panel-header-button">
                 <svg
@@ -4557,7 +4565,18 @@
                 </svg>
               </button>
             </div>
-            <div id="emoji-grid-container"></div>
+            <div 
+              id="emoji-grid-container"
+              style="
+                flex: 1 1 0% !important;
+                height: auto !important;
+                min-height: 0 !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                overscroll-behavior-y: contain !important;
+                touch-action: pan-y !important;
+              "
+            ></div>
           </div>
         </div>
 
