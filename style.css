@@ -453,16 +453,22 @@ body.is-ios-pwa .wow-content-area,
 body.is-ios-pwa .container-scroll {
   -webkit-overflow-scrolling: touch !important;
   
-  /* 修复：参考 Settings Page 的方案，恢复高度为 100% 防止塌陷 */
-  height: 100% !important;
-  min-height: 0 !important;
+  /* 
+     FATAL FIX: 移除强制高度和Overflow
+     此前强制 setting height: 100% !important 导致所有 flex-1 元素（包括按钮、小组件）被拉伸到全屏高度。
+     此前强制 overflow-y: auto 导致横向滚动容器（如 bb-retina-scroll）失效。
+  */
+  /* height: 100% !important; */
+  min-height: 0 !important; /* 保留 min-height: 0 防止 Flex 子项塌陷，通常是安全的 */
   
-  overflow-y: auto !important;
-  overscroll-behavior-y: contain !important;
-  touch-action: pan-y !important;
+  /* overflow-y: auto !important; */
+  overscroll-behavior: contain; /* 使用标准属性替代 */
   
-  /* 适配底部安全区 */
-  padding-bottom: env(safe-area-inset-bottom, 20px) !important;
+  /* 允许双向手势，防止横向滚动被锁死 */
+  touch-action: pan-x pan-y !important;
+  
+  /* 移除强制 padding-bottom，防止双重 padding */
+  /* padding-bottom: env(safe-area-inset-bottom, 20px) !important; */
 }
 
 /* 单独修复 emoji 表情面板滚动 */
