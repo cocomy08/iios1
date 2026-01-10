@@ -112,7 +112,7 @@
     <!-- 版本检测和更新提示系统 -->
     <script>
       (function () {
-        const CURRENT_VERSION = "3.00352"; // 当前版本号
+        const CURRENT_VERSION = "3.00353"; // 当前版本号
         const VERSION_KEY = "app_version";
         const LAST_CHECK_KEY = "last_version_check";
 
@@ -599,6 +599,36 @@
         transition: revert !important;
         animation: revert !important;
         box-shadow: revert !important;
+      }
+
+      /* Wow Detail 特定修复：防止 iOS 渲染白屏 */
+      .is-ios .wow-detail-view,
+      .is-ios .wow-detail-view * {
+          /* 核心布局属性必须还原，否则无法交互/移动 */
+          transform: revert !important;
+          transition: revert !important;
+          
+          /* 强制可见性 */
+          opacity: 1 !important;
+          visibility: visible !important;
+
+          /* ⛔ 禁用昂贵特效以防白屏/显存溢出 */
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+          box-shadow: none !important;
+          
+          /* 修复 PWA 滚动问题 */
+          -webkit-overflow-scrolling: touch !important;
+          overflow-y: auto !important;
+          overscroll-behavior-y: contain !important; /* 防止橡皮筋效果拉动整个页面 */
+      }
+      
+      /* 针对内容区域的特定滚动修复 */
+      .is-ios .wow-detail-content,
+      .is-ios .wow-content-area,
+      .is-ios .wow-comment-list {
+          -webkit-overflow-scrolling: touch !important;
+          overflow-y: auto !important;
       }
     </style>
     <!-- ⏳ 非关键 CSS 将通过 loadjs 延迟加载 -->
@@ -2485,7 +2515,7 @@
                     <p class="text-[15px] font-medium text-gray-900">
                       Version 3.0
                     </p>
-                    <p class="text-[13px] text-gray-400 mt-1">Build 3.00352</p>
+                    <p class="text-[13px] text-gray-400 mt-1">Build 3.00353</p>
                   </div>
                   <button
                     id="about-device-btn"

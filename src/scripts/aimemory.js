@@ -301,6 +301,7 @@ ${conversationContext}
     }
 
     // ========== 检查并触发记忆生成 ==========
+    // ========== 检查并触发记忆生成 ==========
     async function checkAndTriggerMemory(contact) {
         if (!contact || !contact.id) return;
 
@@ -313,14 +314,16 @@ ${conversationContext}
         const historyCount = contact.history?.length || 0;
         const increment = Math.max(0, historyCount - data.baseCount);
 
-        // 检查是否达到触发阈值
-        const shouldTrigger = increment > 0 &&
-            increment % CONFIG.MEMORY_THRESHOLD === 0 &&
-            increment !== data.lastTriggerCount;
+        // 确保初始化
+        if (typeof data.lastTriggerCount === 'undefined') data.lastTriggerCount = 0;
 
-        if (shouldTrigger) {
+        const currentLevel = Math.floor(increment / CONFIG.MEMORY_THRESHOLD);
+        const lastLevel = Math.floor(data.lastTriggerCount / CONFIG.MEMORY_THRESHOLD);
+
+        // 逻辑修复：使用阈值跨越检测
+        if (currentLevel > lastLevel) {
             console.log('[AIMemory] 触发记忆生成，increment:', increment);
-            data.lastTriggerCount = increment;
+            data.lastTriggerCount = currentLevel * CONFIG.MEMORY_THRESHOLD;
 
             const summary = await generateMemorySummary(contact);
             if (summary) {
@@ -341,7 +344,15 @@ ${conversationContext}
 
                 console.log('[AIMemory] 新记忆已保存');
                 showToast('新的记忆已生成！');
+
+                // 自动刷新列表如果当前正打开着
+                if (document.getElementById('memory-overlay')?.classList.contains('active')) {
+                    renderMemoryList();
+                }
             }
+        } else {
+            // 即使没触发，也要保存最新的 lastTriggerCount (如果它小于当前increment但还没跨越阈值... 不对，lastTriggerCount 应该是已触发的标记)
+            // 其实不需要保存，因为我们只在触发时更新 lastTriggerCount
         }
 
         memoryData = data;
@@ -384,7 +395,17 @@ ${conversationContext}
         container.innerHTML = '';
 
         if (!memoryData || !memoryData.memories || memoryData.memories.length === 0) {
-            const remaining = CONFIG.MEMORY_THRESHOLD - ((memoryData?.lastTriggerCount || 0) % CONFIG.MEMORY_THRESHOLD || CONFIG.MEMORY_THRESHOLD);
+            // 修复：计算剩余条数应该是基于当前增量，而不是上次触发值
+            const historyCount = window.currentOpenContact?.history?.length || 0;
+            const increment = Math.max(0, historyCount - (memoryData.baseCount || 0));
+
+            // 计算距离下一个阈值还差多少
+            // 例如：increment=10, threshold=80. 80 - (10 % 80) = 70.
+            // 例如：increment=80. 80 - (80 % 80) = 80. (此时应该触发了，如果没触发，显示0？不，显示80说明下一轮)
+            // 如果正好是0 (即刚刚初始化), remaining = 80.
+            let remaining = CONFIG.MEMORY_THRESHOLD - (increment % CONFIG.MEMORY_THRESHOLD);
+            if (remaining === 0) remaining = CONFIG.MEMORY_THRESHOLD; // 防止显示为0
+
             container.innerHTML = `
                 <div class="memory-empty-state">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">

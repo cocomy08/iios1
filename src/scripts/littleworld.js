@@ -680,9 +680,24 @@
 
         const count = littleWorldData.incrementCount;
 
-        // 检查动态触发（基于增量计数）
-        if (count > 0 && count % CONFIG.MOMENTS_THRESHOLD === 0 && count !== littleWorldData.lastMomentTrigger) {
-            littleWorldData.lastMomentTrigger = count;
+        // 确保初始化上次触发记录
+        if (typeof littleWorldData.lastMomentTrigger === 'undefined') littleWorldData.lastMomentTrigger = 0;
+        if (typeof littleWorldData.lastSubtextTrigger === 'undefined') littleWorldData.lastSubtextTrigger = 0;
+
+        // 逻辑修复：使用阈值跨越检测，而不是取模精确匹配
+        // 例如：Threshold=100. 
+        // 之前：count=100时 (100%100==0) 触发。如果不小心跳到101，就失效了。
+        // 现在：currentLevel = floor(100/100) = 1. lastLevel = floor(99/100) = 0. 跨越了！触发！
+
+        const currentMomentLevel = Math.floor(count / CONFIG.MOMENTS_THRESHOLD);
+        const lastMomentLevel = Math.floor(littleWorldData.lastMomentTrigger / CONFIG.MOMENTS_THRESHOLD);
+
+        // 检查动态触发
+        if (currentMomentLevel > lastMomentLevel) {
+            // 更新 lastMomentTrigger 为当前阈值点（例如 100, 200）
+            // 这样下次只有到 200 才会再次触发
+            littleWorldData.lastMomentTrigger = currentMomentLevel * CONFIG.MOMENTS_THRESHOLD;
+
             try {
                 const momentContent = await generateMoment(contact);
                 const newMoment = {
@@ -702,9 +717,13 @@
             }
         }
 
+        const currentSubtextLevel = Math.floor(count / CONFIG.SUBTEXT_THRESHOLD);
+        const lastSubtextLevel = Math.floor(littleWorldData.lastSubtextTrigger / CONFIG.SUBTEXT_THRESHOLD);
+
         // 检查言外之意触发
-        if (count > 0 && count % CONFIG.SUBTEXT_THRESHOLD === 0 && count !== littleWorldData.lastSubtextTrigger) {
-            littleWorldData.lastSubtextTrigger = count;
+        if (currentSubtextLevel > lastSubtextLevel) {
+            littleWorldData.lastSubtextTrigger = currentSubtextLevel * CONFIG.SUBTEXT_THRESHOLD;
+
             try {
                 // 获取已有的原话用于去重
                 const existingQuotes = (littleWorldData.subtexts || []).map(s => s.originalQuote);
@@ -732,15 +751,22 @@
     }
 
     // ========== 后台静默检查（不需要打开UI）==========
+    // ========== 后台静默检查（不需要打开UI）==========
     async function backgroundCheck(contact, data) {
         if (!contact || !data) return;
 
         const count = data.incrementCount;
-        console.log('[LittleWorld] 后台检查 increment:', count);
 
-        // 检查动态触发
-        if (count > 0 && count % CONFIG.MOMENTS_THRESHOLD === 0 && count !== data.lastMomentTrigger) {
-            data.lastMomentTrigger = count;
+        // 确保初始化
+        if (typeof data.lastMomentTrigger === 'undefined') data.lastMomentTrigger = 0;
+        if (typeof data.lastSubtextTrigger === 'undefined') data.lastSubtextTrigger = 0;
+
+        const currentMomentLevel = Math.floor(count / CONFIG.MOMENTS_THRESHOLD);
+        const lastMomentLevel = Math.floor(data.lastMomentTrigger / CONFIG.MOMENTS_THRESHOLD);
+
+        // 检查动态触发 - 使用跨越检测
+        if (currentMomentLevel > lastMomentLevel) {
+            data.lastMomentTrigger = currentMomentLevel * CONFIG.MOMENTS_THRESHOLD;
             try {
                 console.log('[LittleWorld] 后台触发动态生成...');
                 const momentContent = await generateMoment(contact);
@@ -761,9 +787,12 @@
             }
         }
 
-        // 检查言外之意触发
-        if (count > 0 && count % CONFIG.SUBTEXT_THRESHOLD === 0 && count !== data.lastSubtextTrigger) {
-            data.lastSubtextTrigger = count;
+        const currentSubtextLevel = Math.floor(count / CONFIG.SUBTEXT_THRESHOLD);
+        const lastSubtextLevel = Math.floor(data.lastSubtextTrigger / CONFIG.SUBTEXT_THRESHOLD);
+
+        // 检查言外之意触发 - 使用跨越检测
+        if (currentSubtextLevel > lastSubtextLevel) {
+            data.lastSubtextTrigger = currentSubtextLevel * CONFIG.SUBTEXT_THRESHOLD;
             try {
                 console.log('[LittleWorld] 后台触发言外之意生成...');
                 // 获取已有的原话用于去重
@@ -797,7 +826,7 @@
     function incrementMessageCount() {
         if (!littleWorldData) return;
         littleWorldData.incrementCount++;
-        
+
         // 批量保存：不立即调用 saveLittleWorldData，而是标记为待保存
         // 在 messageSent 防抖触发时再批量保存
         _pendingSave = true;
@@ -866,10 +895,10 @@
                 if (!window.LittleWorld || !littleWorldData) return;
                 try {
                     window.LittleWorld.incrementCount();
-                    
+
                     // 批量保存待保存数据
                     await flushLittleWorldData();
-                    
+
                     // 使用 requestIdleCallback 避免阻塞主线程
                     if (typeof requestIdleCallback !== 'undefined') {
                         requestIdleCallback(async () => {

@@ -452,9 +452,27 @@ body.is-ios-pwa .wow-detail-comments,
 body.is-ios-pwa .wow-content-area,
 body.is-ios-pwa .container-scroll {
   -webkit-overflow-scrolling: touch !important;
+  
+  /* 修复：参考 Settings Page 的方案，恢复高度为 100% 防止塌陷 */
+  height: 100% !important;
   min-height: 0 !important;
+  
+  overflow-y: auto !important;
+  overscroll-behavior-y: contain !important;
+  touch-action: pan-y !important;
+  
+  /* 适配底部安全区 */
+  padding-bottom: env(safe-area-inset-bottom, 20px) !important;
+}
+
+/* 单独修复 emoji 表情面板滚动 */
+body.is-ios-pwa .emoji-grid-container {
+  -webkit-overflow-scrolling: touch !important;
+  height: auto !important;
+  overflow-y: scroll !important;
   touch-action: pan-y !important;
   overscroll-behavior-y: contain !important;
+  min-height: 0 !important;
 }
 
 /* 修复：确保有 overflow 属性的元素都能滚动 */
