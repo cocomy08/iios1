@@ -771,3 +771,41 @@
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
 }
+
+/* ============ WOW (朋友圈/动态) 修复样式 ============ */
+/* Fix: 详情页默认必须隐藏，否则会覆盖身份选择弹窗 */
+.wow-detail-view {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #f7f7f7;
+    z-index: 1200;
+    display: none;
+    flex-direction: column;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+}
+
+.wow-detail-view.show {
+    display: flex !important;
+}
+
+/* 身份选择弹窗样式增强 */
+.wow-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1300; /* 确保在最上层 */
+    display: none;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}
+

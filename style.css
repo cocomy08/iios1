@@ -458,7 +458,7 @@ body.is-ios-pwa .container-scroll {
      此前强制 setting height: 100% !important 导致所有 flex-1 元素（包括按钮、小组件）被拉伸到全屏高度。
      此前强制 overflow-y: auto 导致横向滚动容器（如 bb-retina-scroll）失效。
   */
-  height: auto !important;
+  /* height: 100% !important; */
   min-height: 0 !important; /* 保留 min-height: 0 防止 Flex 子项塌陷，通常是安全的 */
   
   /* overflow-y: auto !important; */
