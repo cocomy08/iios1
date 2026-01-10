@@ -471,14 +471,27 @@ body.is-ios-pwa .container-scroll {
   /* padding-bottom: env(safe-area-inset-bottom, 20px) !important; */
 }
 
-/* 单独修复 emoji 表情面板滚动 */
+/* 单独修复 emoji 表情面板滚动 - 终极修复方案 */
+/* 1. 父容器配置 */
+body.is-ios-pwa #emoji-panel {
+  display: flex !important;
+  flex-direction: column !important;
+  height: var(--emoji-panel-height) !important;
+  overflow: hidden !important;
+}
+
+/* 2. 滚动容器配置 */
+body.is-ios-pwa #emoji-grid-container,
 body.is-ios-pwa .emoji-grid-container {
+  flex: 1 1 0% !important;
+  height: auto !important; 
+  max-height: none !important;
+  overflow-y: auto !important; 
   -webkit-overflow-scrolling: touch !important;
-  height: auto !important;
-  overflow-y: scroll !important;
+  min-height: 0 !important;
   touch-action: pan-y !important;
   overscroll-behavior-y: contain !important;
-  min-height: 0 !important;
+  background: white;
 }
 
 /* 修复：确保有 overflow 属性的元素都能滚动 */
